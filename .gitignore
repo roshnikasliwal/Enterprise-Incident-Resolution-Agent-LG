@@ -1,0 +1,46 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- Environment / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Local data (SQLite checkpoints/memory, Chroma persistence) ---
+data/chroma/*
+!data/chroma/.gitkeep
+data/checkpoints/*
+!data/checkpoints/.gitkeep
+data/sqlite/*
+!data/sqlite/.gitkeep
+*.sqlite
+*.sqlite3
+*.db
+
+# --- Testing / coverage ---
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+
+# --- OS ---
+.DS_Store
+
+# --- LangGraph / LangSmith local artifacts ---
+.langgraph_api/

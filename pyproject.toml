@@ -1,0 +1,37 @@
+[project]
+name = "incident-agent"
+version = "0.1.0"
+description = "Enterprise Incident Resolution Agent -- a multi-agent LangGraph system for infrastructure incident investigation and resolution."
+requires-python = ">=3.12"
+readme = "README.md"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["incident_agent*"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-ra --strict-markers"
+markers = [
+    "unit: fast, no external I/O",
+    "integration: exercises multiple layers together",
+    "graph: exercises a compiled LangGraph graph",
+]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+disallow_untyped_defs = true
+warn_unused_ignores = true
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
