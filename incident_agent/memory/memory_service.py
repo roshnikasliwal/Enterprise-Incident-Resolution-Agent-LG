@@ -1,9 +1,9 @@
-"""`MemoryService` -- a Facade over the four repositories, giving nodes
-exactly two operations: `recall()` (start of a run) and the persist
-methods `save_memory_node` calls (end of a run). Nodes never touch a
-repository directly, which keeps `graphs/state`-awareness entirely out
-of `memory/` (repositories only ever see domain models, never
-`IncidentState`).
+"""`MemoryService` -- a Facade over five repositories, giving nodes a
+small, stable operation set (`recall()`, the persist methods, and thread
+registration) instead of five repository objects to wire up individually.
+Nodes never touch a repository directly, which keeps `graphs/state`
+awareness entirely out of `memory/` (repositories only ever see domain
+models, never `IncidentState`).
 """
 
 from __future__ import annotations
@@ -16,8 +16,9 @@ from incident_agent.memory.episodic import EPISODIC_COLLECTION_NAME, ChromaEpiso
 from incident_agent.memory.fixes import FixRepository, SqliteFixRepository
 from incident_agent.memory.preferences import PreferenceRepository, SqlitePreferenceRepository
 from incident_agent.memory.structured_store import get_connection
+from incident_agent.memory.thread_registry import SqliteThreadRegistry, ThreadRegistry
 from incident_agent.models.enums import IncidentCategory
-from incident_agent.models.memory import MemoryContext, PastIncidentRecord
+from incident_agent.models.memory import MemoryContext, PastIncidentRecord, ThreadRecord
 from incident_agent.services.vector_store import VectorStoreService
 
 
@@ -29,11 +30,13 @@ class MemoryService:
         preferences: PreferenceRepository,
         fixes: FixRepository,
         conversations: ConversationRepository,
+        threads: ThreadRegistry,
     ) -> None:
         self._episodic = episodic
         self._preferences = preferences
         self._fixes = fixes
         self._conversations = conversations
+        self._threads = threads
 
     def recall(self, *, user_query: str, category: IncidentCategory | None, session_id: str) -> MemoryContext:
         """Everything worth injecting into a fresh run's context, gathered
@@ -58,6 +61,12 @@ class MemoryService:
 
     def set_preference(self, session_id: str, key: str, value: str) -> None:
         self._preferences.set_preference(session_id, key, value)
+
+    def register_thread(self, session_id: str, thread_id: str, incident_id: str) -> None:
+        self._threads.register(session_id, thread_id, incident_id)
+
+    def list_threads_for_session(self, session_id: str) -> list[ThreadRecord]:
+        return self._threads.list_for_session(session_id)
 
 
 _override: MemoryService | None = None
@@ -92,6 +101,7 @@ def _build_default_memory_service() -> MemoryService:
         preferences=SqlitePreferenceRepository(connection),
         fixes=SqliteFixRepository(connection),
         conversations=SqliteConversationRepository(connection),
+        threads=SqliteThreadRegistry(connection),
     )
 
 

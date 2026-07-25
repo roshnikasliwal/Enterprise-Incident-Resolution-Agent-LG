@@ -47,9 +47,12 @@ def build_incident_graph(checkpointer: BaseCheckpointSaver | None = None) -> Com
     """Build and compile the main incident-resolution graph.
 
     `checkpointer` defaults to an in-memory saver so the graph is fully
-    runnable (including `interrupt()`/resume) with zero setup; Phase 7
-    swaps in a SQLite-backed checkpointer for real persistence across
-    process restarts, without any change to the graph topology itself.
+    runnable (including `interrupt()`/resume) with zero setup -- this is
+    what every test in this project uses. Production callers pass
+    `checkpointer=services.checkpointer.get_checkpointer()` for durable
+    SQLite-backed persistence across process restarts (see
+    `tests/test_phase7_checkpointing.py`); the graph topology itself
+    never changes based on which checkpointer is supplied.
     """
     builder = StateGraph(IncidentState)
 

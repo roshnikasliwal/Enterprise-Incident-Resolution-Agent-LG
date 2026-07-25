@@ -44,6 +44,15 @@ CREATE TABLE IF NOT EXISTS conversations (
     summary TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS session_threads (
+    session_id TEXT NOT NULL,
+    thread_id TEXT NOT NULL,
+    incident_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (session_id, thread_id)
+);
+CREATE INDEX IF NOT EXISTS idx_session_threads_session ON session_threads (session_id);
 """
 
 

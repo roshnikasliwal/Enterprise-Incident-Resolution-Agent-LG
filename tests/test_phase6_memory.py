@@ -24,6 +24,7 @@ from incident_agent.memory.memory_service import (
 )
 from incident_agent.memory.preferences import SqlitePreferenceRepository
 from incident_agent.memory.structured_store import reset_for_tests
+from incident_agent.memory.thread_registry import SqliteThreadRegistry
 from incident_agent.models.enums import IncidentCategory
 from incident_agent.models.memory import PastIncidentRecord
 from incident_agent.nodes.recall_memory_node import recall_memory_node
@@ -159,6 +160,7 @@ class TestMemoryService:
             preferences=SqlitePreferenceRepository(sqlite_conn),
             fixes=SqliteFixRepository(sqlite_conn),
             conversations=SqliteConversationRepository(sqlite_conn),
+            threads=SqliteThreadRegistry(sqlite_conn),
         )
 
     def test_recall_without_category_skips_frequent_fixes(self, sqlite_conn, episodic_repo) -> None:
@@ -206,6 +208,7 @@ class TestMemoryServiceOverrideSeam:
             preferences=SqlitePreferenceRepository(sqlite_conn),
             fixes=SqliteFixRepository(sqlite_conn),
             conversations=SqliteConversationRepository(sqlite_conn),
+            threads=SqliteThreadRegistry(sqlite_conn),
         )
         try:
             override_memory_service(fake)
@@ -225,6 +228,7 @@ class TestMemoryServiceOverrideSeam:
             preferences=SqlitePreferenceRepository(sqlite_conn),
             fixes=SqliteFixRepository(sqlite_conn),
             conversations=SqliteConversationRepository(sqlite_conn),
+            threads=SqliteThreadRegistry(sqlite_conn),
         )
         monkeypatch.setattr(memory_service_module, "_build_default_memory_service", lambda: sentinel)
 
@@ -233,6 +237,7 @@ class TestMemoryServiceOverrideSeam:
             preferences=SqlitePreferenceRepository(sqlite_conn),
             fixes=SqliteFixRepository(sqlite_conn),
             conversations=SqliteConversationRepository(sqlite_conn),
+            threads=SqliteThreadRegistry(sqlite_conn),
         )
         override_memory_service(fake)
         assert get_memory_service() is fake
@@ -248,6 +253,7 @@ class TestMemoryNodes:
             preferences=SqlitePreferenceRepository(sqlite_conn),
             fixes=SqliteFixRepository(sqlite_conn),
             conversations=SqliteConversationRepository(sqlite_conn),
+            threads=SqliteThreadRegistry(sqlite_conn),
         )
         override_memory_service(service)
         return service

@@ -51,6 +51,21 @@ class FrequentFix(BaseModel):
     last_used_at: datetime
 
 
+class ThreadRecord(BaseModel):
+    """One (session, LangGraph checkpoint thread) association -- the
+    application-level index that makes "multiple users" meaningful for
+    checkpointing: LangGraph's checkpointer partitions purely by
+    `thread_id` with no concept of a user, so this is what lets
+    `GET /history` answer "which incidents/threads belong to this
+    session" at all.
+    """
+
+    session_id: str
+    thread_id: str
+    incident_id: str
+    created_at: datetime
+
+
 class MemoryContext(BaseModel):
     """Everything recalled from long-term/episodic/semantic memory for one run."""
 

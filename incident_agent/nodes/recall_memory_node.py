@@ -24,6 +24,8 @@ from incident_agent.nodes.node_runner import run_node
 def recall_memory_node(state: IncidentState) -> dict[str, Any]:
     def work() -> tuple[dict[str, Any], str]:
         service = get_memory_service()
+        service.register_thread(state["session_id"], state["thread_id"], state["incident_id"])
+
         intent = state.get("intent")
         memory_context = service.recall(
             user_query=state["user_query"],

@@ -50,6 +50,7 @@ from incident_agent.memory.memory_service import (
 )
 from incident_agent.memory.preferences import SqlitePreferenceRepository
 from incident_agent.memory.structured_store import reset_for_tests as reset_memory_db
+from incident_agent.memory.thread_registry import SqliteThreadRegistry
 from incident_agent.nodes import agent_cache
 from incident_agent.schemas.analysis import (
     KnowledgeGraphResult,
@@ -204,6 +205,7 @@ def install_fake_agents(
                 preferences=SqlitePreferenceRepository(connection),
                 fixes=SqliteFixRepository(connection),
                 conversations=SqliteConversationRepository(connection),
+                threads=SqliteThreadRegistry(connection),
             )
         )
         try:
