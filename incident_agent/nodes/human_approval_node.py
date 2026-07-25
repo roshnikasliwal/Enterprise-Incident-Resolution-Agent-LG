@@ -15,6 +15,21 @@ decision to state *and* dynamically routes to the next node in one
 return value -- the routing target genuinely depends on data only
 available inside this node (the just-resumed `HumanFeedback`), which is
 exactly the case `Command` exists for over a separate conditional edge.
+
+Three distinct human decisions route three different ways, covering
+Approve/Reject/Modify-State/Retry/Skip-Tool/Edit-Plan from requirements.md:
+
+- `APPROVED`/`AUTO_APPROVED` -> `report_generator` (proceed as drafted).
+- `MODIFIED` + `modified_draft_answer` -> `report_generator`, but with the
+  human's edited resolution substituted for the agent's draft first
+  ("Modify State").
+- `MODIFIED` + `modified_plan` -> `evidence_gathering` directly (bypassing
+  the Planner LLM call entirely, since the human's plan replaces it),
+  with `retry_count` incremented. This is "Edit Plan" and "Retry" at
+  once, and "Skip Tool" is just a special case of it: removing a task
+  from the plan means its tool(s) never run.
+- `REJECTED` -> `final_response` (a deterministic rejection message, no
+  report generated).
 """
 
 from __future__ import annotations
@@ -56,7 +71,9 @@ def _build_approval_brief(state: IncidentState) -> ApprovalRequestSummary:
         )
 
 
-def human_approval_node(state: IncidentState) -> Command[Literal["report_generator", "final_response"]]:
+def human_approval_node(
+    state: IncidentState,
+) -> Command[Literal["report_generator", "final_response", "evidence_gathering"]]:
     brief = _build_approval_brief(state)
 
     raw_response = interrupt(
@@ -77,6 +94,15 @@ def human_approval_node(state: IncidentState) -> Command[Literal["report_generat
             ReasoningStep(node_name="human_approval", content=f"Human decision: {feedback.decision.value}")
         ],
     }
+
+    if feedback.decision == ApprovalStatus.MODIFIED and feedback.modified_plan is not None:
+        # Edit Plan / Retry / Skip Tool: re-enter evidence gathering with the
+        # human's plan, bypassing the Planner LLM call -- their plan *is*
+        # the new plan, not a suggestion to re-derive one from.
+        updates["plan"] = feedback.modified_plan
+        updates["retry_count"] = state.get("retry_count", 0) + 1
+        return Command(goto="evidence_gathering", update=updates)
+
     if feedback.decision == ApprovalStatus.MODIFIED and feedback.modified_draft_answer is not None:
         updates["draft_answer"] = feedback.modified_draft_answer
 

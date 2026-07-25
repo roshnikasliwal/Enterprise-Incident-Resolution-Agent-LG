@@ -19,6 +19,8 @@ phase; this module only composes them.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -43,7 +45,12 @@ from incident_agent.nodes.save_memory_node import save_memory_node
 from incident_agent.nodes.validator_node import validator_node
 
 
-def build_incident_graph(checkpointer: BaseCheckpointSaver | None = None) -> CompiledStateGraph:
+def build_incident_graph(
+    checkpointer: BaseCheckpointSaver | None = None,
+    *,
+    interrupt_before: Sequence[str] | None = None,
+    interrupt_after: Sequence[str] | None = None,
+) -> CompiledStateGraph:
     """Build and compile the main incident-resolution graph.
 
     `checkpointer` defaults to an in-memory saver so the graph is fully
@@ -53,6 +60,18 @@ def build_incident_graph(checkpointer: BaseCheckpointSaver | None = None) -> Com
     SQLite-backed persistence across process restarts (see
     `tests/test_phase7_checkpointing.py`); the graph topology itself
     never changes based on which checkpointer is supplied.
+
+    `interrupt_before`/`interrupt_after` are LangGraph's *static*,
+    compile-time pause points -- distinct from `human_approval_node`'s
+    *dynamic* `interrupt()` call, which always fires with a custom payload
+    at exactly one point in the workflow. These pause unconditionally
+    before/after whichever named node(s) the caller specifies, with no
+    payload of their own; a paused run resumes via `graph.invoke(None,
+    config)` (see `controllers/incident_controller.py`). Useful for a
+    "supervised" mode -- e.g. `interrupt_before=["evidence_gathering"]`
+    to let a human review/edit the Planner's plan before any tool runs,
+    the same mechanism `human_approval_node`'s Edit-Plan/Skip-Tool path
+    uses, just applied proactively instead of only at the end.
     """
     builder = StateGraph(IncidentState)
 
@@ -66,7 +85,9 @@ def build_incident_graph(checkpointer: BaseCheckpointSaver | None = None) -> Com
     builder.add_node("validator", validator_node)
     builder.add_node("critic", critic_node)
     builder.add_node("reflection", reflection_node)
-    builder.add_node("human_approval", human_approval_node, destinations=("report_generator", "final_response"))
+    builder.add_node(
+        "human_approval", human_approval_node, destinations=("report_generator", "final_response", "evidence_gathering")
+    )
     builder.add_node("report_generator", report_generator_node)
     builder.add_node("save_memory", save_memory_node)
     builder.add_node("final_response", final_response_node)
@@ -92,4 +113,8 @@ def build_incident_graph(checkpointer: BaseCheckpointSaver | None = None) -> Com
     builder.add_edge("save_memory", "final_response")
     builder.add_edge("final_response", END)
 
-    return builder.compile(checkpointer=checkpointer or InMemorySaver())
+    return builder.compile(
+        checkpointer=checkpointer or InMemorySaver(),
+        interrupt_before=list(interrupt_before) if interrupt_before else None,
+        interrupt_after=list(interrupt_after) if interrupt_after else None,
+    )
