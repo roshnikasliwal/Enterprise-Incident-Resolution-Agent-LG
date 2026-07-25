@@ -1,0 +1,8 @@
+Deployment notes -- checkout-api v2.14.0 (2026-07-25)
+
+- Bumped the ORM dependency from 3.1.2 to 3.2.0 (includes a connection
+  pool default-size change: 20 -> 10 unless overridden explicitly).
+- No explicit pool_size override was added to this service's config
+  during the bump.
+- Rollout completed at 08:02 UTC; first elevated error rate observed
+  at approximately 08:05 UTC.
