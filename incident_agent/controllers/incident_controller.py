@@ -49,13 +49,25 @@ class IncidentController:
     # --- Inspecting a run ----------------------------------------------------
 
     def get_status(self, thread_id: str) -> dict[str, Any]:
-        snapshot = self._get_snapshot(thread_id)
+        snapshot = self.get_snapshot(thread_id)
         return dict(snapshot.values)
 
     def is_paused(self, thread_id: str) -> bool:
         """True if the run is currently interrupted (static or dynamic) and
         awaiting `resume()`/human input."""
-        return len(self._get_snapshot(thread_id).next) > 0
+        return len(self.get_snapshot(thread_id).next) > 0
+
+    def get_snapshot(self, thread_id: str) -> StateSnapshot:
+        """The full LangGraph state snapshot -- `.values` (state), `.next`
+        (which node(s) will run next, empty if the run finished), and
+        `.interrupts` (the dynamic `interrupt()` payload, if paused there).
+        Exposed publicly for callers (the API layer) that need more than
+        `get_status()`'s plain state dict.
+        """
+        snapshot = self._graph.get_state(self._config(thread_id))
+        if not snapshot.values:
+            raise IncidentNotFoundError(f"No checkpointed state found for thread_id '{thread_id}'.")
+        return snapshot
 
     # --- Human-in-the-loop decisions (dynamic interrupt() gate) -----------
 
@@ -96,6 +108,7 @@ class IncidentController:
         `graphs.main_graph.build_incident_graph`'s `interrupt_before`/
         `interrupt_after` parameters), which take no resume payload at all.
         """
+        self.get_snapshot(thread_id)  # raises IncidentNotFoundError if unknown
         self._graph.update_state(self._config(thread_id), values)
 
     # --- Resuming a statically-interrupted run -----------------------------
@@ -107,18 +120,19 @@ class IncidentController:
         carry a value to resume with; whatever state exists (optionally
         edited via `update_state()` first) is simply used as-is.
         """
+        self.get_snapshot(thread_id)
         return self._graph.invoke(None, self._config(thread_id))
 
     # --- Internal helpers ----------------------------------------------------
 
     def _resume_with_feedback(self, thread_id: str, feedback: HumanFeedback) -> dict[str, Any]:
+        # LangGraph's Command(resume=...) against a thread_id with no
+        # checkpoint doesn't fail cleanly -- it attempts to run the graph
+        # from scratch with whatever the resume value happens to satisfy,
+        # which surfaces as a confusing KeyError deep inside whichever node
+        # runs first rather than a clear "no such incident." Check first.
+        self.get_snapshot(thread_id)
         return self._graph.invoke(Command(resume=feedback.model_dump(mode="json")), self._config(thread_id))
-
-    def _get_snapshot(self, thread_id: str) -> StateSnapshot:
-        snapshot = self._graph.get_state(self._config(thread_id))
-        if not snapshot.values:
-            raise IncidentNotFoundError(f"No checkpointed state found for thread_id '{thread_id}'.")
-        return snapshot
 
     @staticmethod
     def _config(thread_id: str) -> dict[str, Any]:
