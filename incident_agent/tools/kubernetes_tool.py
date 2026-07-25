@@ -15,8 +15,8 @@ from langchain_core.tools import tool
 
 from incident_agent.models.enums import LogSeverity
 from incident_agent.models.tool_results import LogEntry
-from incident_agent.tools._mock_utils import deterministic_rng, pick_scenario
 from incident_agent.tools.base import run_structured
+from incident_agent.utils.mock_data import deterministic_rng, pick_scenario
 
 _SCENARIOS = ("oom_killed", "probe_failure", "image_pull_backoff", "healthy")
 

@@ -14,8 +14,8 @@ from __future__ import annotations
 from langchain_core.tools import tool
 
 from incident_agent.services.mock_database import get_connection
-from incident_agent.tools._mock_utils import deterministic_rng, pick_scenario
 from incident_agent.tools.base import run_structured
+from incident_agent.utils.mock_data import deterministic_rng, pick_scenario
 
 
 def _connection_pool_payload(service_name: str) -> dict:

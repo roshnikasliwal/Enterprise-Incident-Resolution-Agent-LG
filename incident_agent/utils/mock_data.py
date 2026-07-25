@@ -1,12 +1,17 @@
-"""Shared helpers for the mocked infrastructure tools (Kubernetes/Kafka/
-Postgres/Redis).
+"""Shared helpers for every mocked-data generator in this project (the
+Kubernetes/Kafka/Postgres/Redis tools in `tools/`, and the Web Search
+node's mock results in `nodes/`).
 
-Every mock tool needs the same thing: deterministic-but-varied fake data,
-so the same `pod_name`/`topic`/`service_name` always produces the same
-scenario within a run (useful for a coherent demo/investigation) while
-different names plausibly produce different failure modes (useful so the
-mock data doesn't feel obviously canned). A single `pick_scenario()`
-helper backs all four tools instead of each reimplementing hashing logic.
+Every mock generator needs the same thing: deterministic-but-varied fake
+data, so the same `pod_name`/`topic`/`service_name`/query always produces
+the same scenario within a run (useful for a coherent demo/investigation)
+while different inputs plausibly produce different outcomes (so the mock
+data doesn't feel obviously canned). A single `pick_scenario()` helper
+backs all of them instead of each reimplementing hashing logic.
+
+Lives in `utils/` (not `tools/`) because both the tools layer and the
+nodes layer need it, and `utils/` is the one layer both are allowed to
+depend on without creating a cross-layer dependency.
 """
 
 from __future__ import annotations

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from langchain_core.tools import tool
 
-from incident_agent.tools._mock_utils import deterministic_rng, pick_scenario
 from incident_agent.tools.base import run_structured
+from incident_agent.utils.mock_data import deterministic_rng, pick_scenario
 
 _MEMORY_SCENARIOS = ("healthy", "near_maxmemory", "over_maxmemory")
 
