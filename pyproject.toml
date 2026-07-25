@@ -23,6 +23,14 @@ markers = [
     "graph: exercises a compiled LangGraph graph",
 ]
 
+[tool.coverage.run]
+source = ["incident_agent"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "\\.\\.\\."]
+skip_empty = true
+
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true

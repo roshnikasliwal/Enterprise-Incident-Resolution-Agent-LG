@@ -15,6 +15,7 @@ certifi==2026.7.22
 charset-normalizer==3.4.9
 chromadb==1.5.9
 click==8.4.2
+coverage==7.15.2
 distro==1.9.0
 docstring_parser==0.18.0
 durationpy==0.10
@@ -37,6 +38,8 @@ httpx-sse==0.4.3
 huggingface_hub==1.24.0
 idna==3.18
 importlib_resources==7.1.0
+# Editable Git install with no remote (incident-agent==0.1.0)
+-e /home/roshni/Documents/claude_code/Enterprise-Incident-Resolution-Agent
 iniconfig==2.3.0
 itsdangerous==2.2.0
 Jinja2==3.1.6
@@ -97,6 +100,7 @@ PyPika==0.51.1
 pyproject_hooks==1.2.0
 pytest==8.4.2
 pytest-asyncio==0.24.0
+pytest-cov==7.1.0
 pytest-mock==3.15.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
