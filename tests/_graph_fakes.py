@@ -13,6 +13,7 @@ routing function in isolation.
 
 from __future__ import annotations
 
+import tempfile
 from collections.abc import Callable, Sequence
 from contextlib import contextmanager
 from itertools import count
@@ -39,6 +40,16 @@ from incident_agent.agents.sql_agent import SQLAgent
 from incident_agent.agents.tool_selection import ToolSelectionAgent
 from incident_agent.agents.validator import ValidatorAgent
 from incident_agent.agents.web_search import WebSearchAgent
+from incident_agent.memory.conversation import SqliteConversationRepository
+from incident_agent.memory.episodic import ChromaEpisodicMemoryRepository
+from incident_agent.memory.fixes import SqliteFixRepository
+from incident_agent.memory.memory_service import (
+    MemoryService,
+    clear_memory_service_override,
+    override_memory_service,
+)
+from incident_agent.memory.preferences import SqlitePreferenceRepository
+from incident_agent.memory.structured_store import reset_for_tests as reset_memory_db
 from incident_agent.nodes import agent_cache
 from incident_agent.schemas.analysis import (
     KnowledgeGraphResult,
@@ -58,6 +69,7 @@ from incident_agent.schemas.resolution import DraftAnswer, ResolutionStep
 from incident_agent.schemas.retrieval import RetrievalQueryPlan
 from incident_agent.schemas.root_cause import RootCauseAnalysis
 from incident_agent.schemas.tool_selection import ToolSelectionDecision
+from incident_agent.services.vector_store import VectorStoreService
 
 
 def _register(agent_cls: type[BaseAgent], factory: Callable[[dict], BaseModel]) -> None:
@@ -179,7 +191,23 @@ def install_fake_agents(
         lambda _: FinalAnswer(answer="Resolved: raised checkout-api's memory limit to 1Gi.", confidence=0.9),
     )
 
-    try:
-        yield
-    finally:
-        agent_cache.clear_overrides()
+    # Isolated memory backends (scratch SQLite + a throwaway Chroma
+    # directory) so graph tests never touch the real project's
+    # data/sqlite/memory.sqlite or data/chroma -- see
+    # memory.memory_service.override_memory_service.
+    with tempfile.TemporaryDirectory(prefix="incident_agent_test_chroma_") as chroma_dir:
+        connection = reset_memory_db()
+        vector_store = VectorStoreService(persist_directory=chroma_dir, collection_name="test_episodic_memory")
+        override_memory_service(
+            MemoryService(
+                episodic=ChromaEpisodicMemoryRepository(vector_store),
+                preferences=SqlitePreferenceRepository(connection),
+                fixes=SqliteFixRepository(connection),
+                conversations=SqliteConversationRepository(connection),
+            )
+        )
+        try:
+            yield
+        finally:
+            agent_cache.clear_overrides()
+            clear_memory_service_override()

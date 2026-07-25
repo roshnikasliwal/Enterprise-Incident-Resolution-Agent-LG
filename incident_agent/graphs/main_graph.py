@@ -1,9 +1,10 @@
 """The top-level incident-resolution `StateGraph`.
 
-Wires together every node/subgraph/edge built in this phase into the
+Wires together every node/subgraph/edge built across Phases 5-6 into the
 workflow from `requirements.md`:
 
-    intent_detection -> planner -> evidence_gathering (subgraph, Send fan-out)
+    recall_memory -> intent_detection -> planner
+        -> evidence_gathering (subgraph, Send fan-out)
         -> merge_results -> root_cause_analysis -> incident_resolution
         -> validator -> critic
         -> [confidence_check] -> reflection -> planner   (retry cycle)
@@ -34,6 +35,7 @@ from incident_agent.nodes.incident_resolution_node import incident_resolution_no
 from incident_agent.nodes.intent_detection_node import intent_detection_node
 from incident_agent.nodes.merge_results_node import merge_results_node
 from incident_agent.nodes.planner_node import planner_node
+from incident_agent.nodes.recall_memory_node import recall_memory_node
 from incident_agent.nodes.reflection_node import reflection_node
 from incident_agent.nodes.report_generator_node import report_generator_node
 from incident_agent.nodes.root_cause_node import root_cause_node
@@ -51,6 +53,7 @@ def build_incident_graph(checkpointer: BaseCheckpointSaver | None = None) -> Com
     """
     builder = StateGraph(IncidentState)
 
+    builder.add_node("recall_memory", recall_memory_node)
     builder.add_node("intent_detection", intent_detection_node)
     builder.add_node("planner", planner_node)
     builder.add_node("evidence_gathering", invoke_evidence_subgraph)
@@ -65,7 +68,8 @@ def build_incident_graph(checkpointer: BaseCheckpointSaver | None = None) -> Com
     builder.add_node("save_memory", save_memory_node)
     builder.add_node("final_response", final_response_node)
 
-    builder.add_edge(START, "intent_detection")
+    builder.add_edge(START, "recall_memory")
+    builder.add_edge("recall_memory", "intent_detection")
     builder.add_edge("intent_detection", "planner")
     builder.add_edge("planner", "evidence_gathering")
     builder.add_edge("evidence_gathering", "merge_results")

@@ -19,6 +19,7 @@ RetrievalSource = Literal[
     "web_search",
     "sql_database",
     "knowledge_graph",
+    "episodic_memory",
 ]
 
 

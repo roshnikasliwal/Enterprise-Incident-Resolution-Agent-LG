@@ -125,7 +125,14 @@ class VectorStoreService:
         return count
 
 
-_VALID_SOURCES = {"vector_store", "knowledge_base", "web_search", "sql_database", "knowledge_graph"}
+_VALID_SOURCES = {
+    "vector_store",
+    "knowledge_base",
+    "web_search",
+    "sql_database",
+    "knowledge_graph",
+    "episodic_memory",
+}
 
 
 @lru_cache(maxsize=1)

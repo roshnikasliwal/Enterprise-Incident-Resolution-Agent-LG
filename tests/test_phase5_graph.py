@@ -179,7 +179,7 @@ class TestFullGraphHappyPath:
             assert result["approval_status"] == ApprovalStatus.APPROVED
             assert result["final_answer"] is not None
             assert "incident_report" in result["metadata"]
-            assert "memory_record_pending_persist" in result["metadata"]
+            assert result["metadata"].get("memory_persisted") is True
             node_sequence = [e.node_name for e in result["execution_history"]]
             assert node_sequence[-3:] == ["report_generator", "save_memory", "final_response"]
 
@@ -244,7 +244,8 @@ class TestStreaming:
             # Nodes preceding the interrupt must appear, in dependency order
             # (parallel evidence branches may interleave with each other but
             # never with their sequential neighbors).
-            assert node_names[0] == "intent_detection"
+            assert node_names[0] == "recall_memory"
+            assert node_names[1] == "intent_detection"
             assert "planner" in node_names
             assert node_names.index("planner") < node_names.index("merge_results")
             assert node_names.index("merge_results") < node_names.index("root_cause_analysis")
