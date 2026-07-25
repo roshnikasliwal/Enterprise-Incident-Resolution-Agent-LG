@@ -1,0 +1,48 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: incident-agent-api:latest
+    env_file:
+      - .env
+    environment:
+      # Paths inside the container -- overrides whatever .env has for local
+      # (non-Docker) development, since the container's filesystem layout
+      # differs from the host's.
+      CHROMA__PERSIST_DIRECTORY: /app/data/chroma
+      CHECKPOINT__DATABASE_PATH: /app/data/checkpoints/checkpoints.sqlite
+      MEMORY__DATABASE_PATH: /app/data/sqlite/memory.sqlite
+    ports:
+      - "8000:8000"
+    volumes:
+      - incident_agent_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: incident-agent-api:latest
+    command: ["streamlit", "run", "ui/streamlit_app.py", "--server.address=0.0.0.0", "--server.port=8501"]
+    env_file:
+      - .env
+    environment:
+      API_BASE_URL: http://api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  # Named volume (not a bind mount) so SQLite/Chroma data persists across
+  # `docker compose down`/`up` without depending on host-path permissions.
+  incident_agent_data:

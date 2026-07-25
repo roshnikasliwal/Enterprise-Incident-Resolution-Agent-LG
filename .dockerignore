@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.git/
+.gitignore
+data/chroma/*
+data/checkpoints/*
+data/sqlite/*
+tests/
+docs/
+requirements.md
+.env
+*.sqlite
+*.sqlite3
