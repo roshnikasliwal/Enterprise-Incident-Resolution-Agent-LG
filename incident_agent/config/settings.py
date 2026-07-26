@@ -89,7 +89,7 @@ class ChromaSettings(BaseModel):
 
     persist_directory: str = str(PROJECT_ROOT / "data" / "chroma")
     collection_name: str = "incident_knowledge_base"
-    embedding_model: str = "text-embedding-3-small"
+    embedding_model: str = "all-MiniLM-L6-v2"
 
 
 class CheckpointSettings(BaseModel):

@@ -42,6 +42,7 @@ def run_structured(
         metadata: Extra structured context to attach (e.g. request params),
             useful for LangSmith traces and debugging without polluting `data`.
     """
+    logger.info("tool_invoking", extra={"tool_name": tool_name})
     started = time.perf_counter()
     data: Any = None
     status = ToolStatus.SUCCESS
@@ -55,6 +56,8 @@ def run_structured(
         logger.warning("tool_execution_failed", extra={"tool_name": tool_name, "error": error_message})
 
     latency_ms = (time.perf_counter() - started) * 1000
+    if status == ToolStatus.SUCCESS:
+        logger.info("tool_completed", extra={"tool_name": tool_name, "latency_ms": round(latency_ms, 1)})
     envelope = ToolResult(
         tool_name=tool_name,
         status=status,

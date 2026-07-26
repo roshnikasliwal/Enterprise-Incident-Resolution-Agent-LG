@@ -14,15 +14,38 @@ from typing import Any
 
 import httpx
 import streamlit as st
+from dotenv import load_dotenv
+
+from incident_agent.config.settings import PROJECT_ROOT
+
+# Unlike the API process, Streamlit never loads `.env` on its own -- it's a
+# separate process from `python run_api.py`/uvicorn, which pick .env up via
+# pydantic-settings. Without this, API__API_KEY set in .env would be
+# invisible here even though the API enforces it (401 with no way to send
+# the header from the UI, since os.environ wouldn't have it).
+load_dotenv(PROJECT_ROOT / ".env")
 
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
-_TIMEOUT_SECONDS = 30.0
+# A real investigation makes many sequential/parallel LLM calls across up to
+# 17 agents before pausing for approval or finishing -- comfortably over 30s
+# once real provider credentials are wired in (fine for the fake-agent test
+# suite, not for an actual run). /incident and /approve (which can re-enter
+# evidence_gathering) are the slow ones; generous enough to cover a
+# replan/retry cycle too.
+_TIMEOUT_SECONDS = 360.0
+
+# Same `.env` var the API reads as `settings.api.api_key` (API__API_KEY, via
+# pydantic-settings' env_nested_delimiter="__"); the UI reads it raw since it
+# has no settings layer of its own. Unset -> no header sent, matching the
+# API's open-by-default posture in `api/dependencies.require_api_key`.
+API_KEY = os.environ.get("API__API_KEY") or None
 
 st.set_page_config(page_title="Enterprise Incident Resolution Agent", page_icon="🛠️", layout="centered")
 
 
 def _client() -> httpx.Client:
-    return httpx.Client(base_url=API_BASE_URL, timeout=_TIMEOUT_SECONDS)
+    headers = {"X-API-Key": API_KEY} if API_KEY else {}
+    return httpx.Client(base_url=API_BASE_URL, timeout=_TIMEOUT_SECONDS, headers=headers)
 
 
 def _post(path: str, json: dict[str, Any] | None = None) -> dict[str, Any] | None:

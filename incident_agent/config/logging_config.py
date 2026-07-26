@@ -60,13 +60,35 @@ class _JSONFormatter(logging.Formatter):
 
 
 class _ConsoleFormatter(logging.Formatter):
-    """Human-readable formatter used for local development."""
+    """Human-readable formatter used for local development.
+
+    Stdlib's `%`-style `fmt` string only ever expands the fixed set of
+    standard `LogRecord` attributes -- fields passed via `extra={...}`
+    (node names, durations, decisions -- the whole point of this
+    project's structured logging calls) are silently dropped unless
+    explicitly appended here, the same way `_JSONFormatter` surfaces them.
+    """
 
     def __init__(self) -> None:
         super().__init__(
             fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
+
+    def format(self, record: logging.LogRecord) -> str:
+        # Must snapshot extras *before* super().format() runs -- it mutates
+        # the record in place (sets .message, and .asctime if %(asctime)s
+        # is used), which would otherwise leak both into "extras" below.
+        extras = {
+            key: value
+            for key, value in record.__dict__.items()
+            if key not in _STANDARD_RECORD_ATTRS and not key.startswith("_")
+        }
+        base = super().format(record)
+        if not extras:
+            return base
+        rendered = " ".join(f"{key}={value}" for key, value in extras.items())
+        return f"{base} | {rendered}"
 
 
 def configure_logging(settings: Settings | None = None) -> None:

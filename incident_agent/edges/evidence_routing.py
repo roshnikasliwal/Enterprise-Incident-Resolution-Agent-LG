@@ -29,8 +29,11 @@ from typing import Any
 
 from langgraph.types import Send
 
+from incident_agent.config.logging_config import get_logger
 from incident_agent.graphs.state import IncidentState
 from incident_agent.models.enums import TaskType
+
+logger = get_logger(__name__)
 
 NODE_NAME_BY_TASK_TYPE: dict[TaskType, str] = {
     TaskType.LOG_ANALYSIS: "log_analysis",
@@ -52,7 +55,9 @@ def route_to_evidence_tasks(state: IncidentState) -> list[Send]:
         # the graph with zero evidence -- log analysis is relevant to
         # almost every incident category, so run it rather than proceeding
         # straight to Root Cause Analysis with nothing to reason over.
+        logger.info("evidence_dispatch", extra={"task_types": ["log_analysis"], "reason": "empty_plan_fallback"})
         return [Send("log_analysis", {**shared_context, "current_task": None})]
+    logger.info("evidence_dispatch", extra={"task_types": [task.task_type.value for task in plan.tasks]})
     return [
         Send(NODE_NAME_BY_TASK_TYPE[task.task_type], {**shared_context, "current_task": task}) for task in plan.tasks
     ]

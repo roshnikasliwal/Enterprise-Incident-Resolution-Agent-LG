@@ -35,11 +35,19 @@ def run_node(node_name: str, work: NodeWork) -> dict[str, Any]:
     to LangGraph as the node's state update.
     """
     started_at = datetime.now(timezone.utc)
+    logger.info("node_started", extra={"node_name": node_name})
     try:
         updates, summary = work()
     except Exception as exc:  # noqa: BLE001 -- the whole point: never let this escape the node
         completed_at = datetime.now(timezone.utc)
-        logger.error("node_execution_failed", extra={"node_name": node_name, "error": str(exc)})
+        logger.error(
+            "node_failed",
+            extra={
+                "node_name": node_name,
+                "error": str(exc),
+                "duration_ms": round((completed_at - started_at).total_seconds() * 1000, 1),
+            },
+        )
         return {
             "errors": [AgentError(node_name=node_name, error_type=type(exc).__name__, message=str(exc))],
             "execution_history": [
@@ -55,13 +63,18 @@ def run_node(node_name: str, work: NodeWork) -> dict[str, Any]:
         }
 
     completed_at = datetime.now(timezone.utc)
+    duration_ms = (completed_at - started_at).total_seconds() * 1000
     history_entry = ExecutionHistoryEntry(
         node_name=node_name,
         status=TaskStatus.COMPLETED,
         started_at=started_at,
         completed_at=completed_at,
-        duration_ms=(completed_at - started_at).total_seconds() * 1000,
+        duration_ms=duration_ms,
         summary=summary,
+    )
+    logger.info(
+        "node_completed",
+        extra={"node_name": node_name, "duration_ms": round(duration_ms, 1), "summary": summary},
     )
     merged = dict(updates)
     merged["execution_history"] = [*merged.get("execution_history", []), history_entry]

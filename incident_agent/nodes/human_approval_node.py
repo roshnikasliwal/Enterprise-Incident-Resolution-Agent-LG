@@ -76,6 +76,7 @@ def human_approval_node(
 ) -> Command[Literal["report_generator", "final_response", "evidence_gathering"]]:
     brief = _build_approval_brief(state)
 
+    logger.info("human_approval_paused", extra={"incident_id": state["incident_id"]})
     raw_response = interrupt(
         {
             "kind": "approval_request",
@@ -85,6 +86,10 @@ def human_approval_node(
     )
     feedback = (
         raw_response if isinstance(raw_response, HumanFeedback) else HumanFeedback.model_validate(raw_response)
+    )
+    logger.info(
+        "human_decision_received",
+        extra={"incident_id": state["incident_id"], "decision": feedback.decision.value},
     )
 
     updates: dict[str, Any] = {

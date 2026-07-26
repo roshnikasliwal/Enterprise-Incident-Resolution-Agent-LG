@@ -17,11 +17,14 @@ from typing import Any
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command, StateSnapshot
 
+from incident_agent.config.logging_config import get_logger
 from incident_agent.graphs.state import create_initial_state
 from incident_agent.models.enums import ApprovalStatus
 from incident_agent.schemas.human import HumanFeedback
 from incident_agent.schemas.planning import ExecutionPlan
 from incident_agent.schemas.resolution import DraftAnswer
+
+logger = get_logger(__name__)
 
 
 class IncidentNotFoundError(LookupError):
@@ -44,7 +47,17 @@ class IncidentController:
         """Kick off a fresh graph run; returns the state at whatever point it
         first pauses (or completes, if nothing interrupts it)."""
         state = create_initial_state(user_query, session_id=session_id, incident_id=incident_id)
-        return self._graph.invoke(state, self._config(state["thread_id"]))
+        logger.info(
+            "incident_started",
+            extra={
+                "thread_id": state["thread_id"],
+                "incident_id": state["incident_id"],
+                "session_id": state["session_id"],
+            },
+        )
+        result = self._graph.invoke(state, self._config(state["thread_id"]))
+        self._log_run_outcome(state["thread_id"], result)
+        return result
 
     # --- Inspecting a run ----------------------------------------------------
 
@@ -109,6 +122,7 @@ class IncidentController:
         `interrupt_after` parameters), which take no resume payload at all.
         """
         self.get_snapshot(thread_id)  # raises IncidentNotFoundError if unknown
+        logger.info("incident_state_updated", extra={"thread_id": thread_id, "updated_fields": list(values.keys())})
         self._graph.update_state(self._config(thread_id), values)
 
     # --- Resuming a statically-interrupted run -----------------------------
@@ -121,7 +135,10 @@ class IncidentController:
         edited via `update_state()` first) is simply used as-is.
         """
         self.get_snapshot(thread_id)
-        return self._graph.invoke(None, self._config(thread_id))
+        logger.info("incident_static_resume", extra={"thread_id": thread_id})
+        result = self._graph.invoke(None, self._config(thread_id))
+        self._log_run_outcome(thread_id, result)
+        return result
 
     # --- Internal helpers ----------------------------------------------------
 
@@ -132,7 +149,22 @@ class IncidentController:
         # which surfaces as a confusing KeyError deep inside whichever node
         # runs first rather than a clear "no such incident." Check first.
         self.get_snapshot(thread_id)
-        return self._graph.invoke(Command(resume=feedback.model_dump(mode="json")), self._config(thread_id))
+        logger.info("incident_decision_resume", extra={"thread_id": thread_id, "decision": feedback.decision.value})
+        result = self._graph.invoke(Command(resume=feedback.model_dump(mode="json")), self._config(thread_id))
+        self._log_run_outcome(thread_id, result)
+        return result
+
+    @staticmethod
+    def _log_run_outcome(thread_id: str, result: dict[str, Any]) -> None:
+        logger.info(
+            "incident_run_paused_or_completed",
+            extra={
+                "thread_id": thread_id,
+                "approval_status": str(result.get("approval_status")),
+                "confidence_score": result.get("confidence_score"),
+                "has_final_answer": result.get("final_answer") is not None,
+            },
+        )
 
     @staticmethod
     def _config(thread_id: str) -> dict[str, Any]:

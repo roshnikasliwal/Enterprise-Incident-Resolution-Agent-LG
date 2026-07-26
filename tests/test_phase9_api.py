@@ -20,7 +20,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from incident_agent.api.app import create_app
-from incident_agent.api.dependencies import get_incident_controller
+from incident_agent.api.dependencies import get_incident_controller, require_api_key
 from incident_agent.controllers.incident_controller import IncidentController
 from incident_agent.graphs.main_graph import build_incident_graph
 
@@ -35,6 +35,11 @@ def client():
         app = create_app()
         graph = build_incident_graph()
         app.dependency_overrides[get_incident_controller] = lambda: IncidentController(graph)
+        # This suite must not depend on whatever API__API_KEY happens to be
+        # set to in the real .env (require_api_key reads get_settings()
+        # directly, not through an injected controller) -- override it the
+        # same way get_incident_controller is overridden above.
+        app.dependency_overrides[require_api_key] = lambda: None
         yield TestClient(app)
         app.dependency_overrides.clear()
 

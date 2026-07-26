@@ -20,7 +20,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from incident_agent.api.app import create_app
-from incident_agent.api.dependencies import get_incident_controller
+from incident_agent.api.dependencies import get_incident_controller, require_api_key
 from incident_agent.controllers.incident_controller import IncidentController
 from incident_agent.graphs.main_graph import build_incident_graph
 from incident_agent.schemas.planning import ExecutionPlan, PlanTask
@@ -48,6 +48,7 @@ class TestFullIncidentLifecycleThroughTheAPI:
             graph = build_incident_graph(checkpointer=saver)
             app = create_app()
             app.dependency_overrides[get_incident_controller] = lambda: IncidentController(graph)
+            app.dependency_overrides[require_api_key] = lambda: None
             client = TestClient(app)
 
             created = client.post(

@@ -29,6 +29,7 @@ configured.
 
 from __future__ import annotations
 
+import time
 from abc import ABC
 from typing import ClassVar, Generic, TypeVar
 
@@ -72,17 +73,29 @@ class BaseAgent(ABC, Generic[TOutput]):
         )
 
     def invoke(self, **inputs: object) -> TOutput:
+        logger.info("agent_invoking", extra={"agent_name": self.name})
+        started = time.perf_counter()
         try:
             result = self._chain.invoke(inputs)
         except Exception as exc:  # noqa: BLE001 -- converted to a typed error for callers
             logger.warning("agent_execution_failed", extra={"agent_name": self.name, "error": str(exc)})
             raise AgentExecutionError(self.name, exc) from exc
+        logger.info(
+            "agent_completed",
+            extra={"agent_name": self.name, "duration_ms": round((time.perf_counter() - started) * 1000, 1)},
+        )
         return result  # type: ignore[return-value]
 
     async def ainvoke(self, **inputs: object) -> TOutput:
+        logger.info("agent_invoking", extra={"agent_name": self.name})
+        started = time.perf_counter()
         try:
             result = await self._chain.ainvoke(inputs)
         except Exception as exc:  # noqa: BLE001 -- converted to a typed error for callers
             logger.warning("agent_execution_failed", extra={"agent_name": self.name, "error": str(exc)})
             raise AgentExecutionError(self.name, exc) from exc
+        logger.info(
+            "agent_completed",
+            extra={"agent_name": self.name, "duration_ms": round((time.perf_counter() - started) * 1000, 1)},
+        )
         return result  # type: ignore[return-value]

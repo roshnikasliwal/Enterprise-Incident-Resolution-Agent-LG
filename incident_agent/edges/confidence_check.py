@@ -12,8 +12,11 @@ from __future__ import annotations
 
 from typing import Literal
 
+from incident_agent.config.logging_config import get_logger
 from incident_agent.config.settings import get_settings
 from incident_agent.graphs.state import IncidentState
+
+logger = get_logger(__name__)
 
 
 def route_after_confidence_check(state: IncidentState) -> Literal["reflection", "human_approval"]:
@@ -24,6 +27,17 @@ def route_after_confidence_check(state: IncidentState) -> Literal["reflection", 
     retry_count = state.get("retry_count", 0)
 
     needs_another_pass = confidence < settings.confidence_threshold or not critic_approves
-    if needs_another_pass and retry_count < settings.max_replan_attempts:
-        return "reflection"
-    return "human_approval"
+    decision: Literal["reflection", "human_approval"] = (
+        "reflection" if needs_another_pass and retry_count < settings.max_replan_attempts else "human_approval"
+    )
+    logger.info(
+        "confidence_check",
+        extra={
+            "confidence_score": confidence,
+            "confidence_threshold": settings.confidence_threshold,
+            "critic_approves": critic_approves,
+            "retry_count": retry_count,
+            "decision": decision,
+        },
+    )
+    return decision

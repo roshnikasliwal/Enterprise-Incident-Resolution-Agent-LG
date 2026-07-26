@@ -12,8 +12,11 @@ from __future__ import annotations
 
 from typing import Literal
 
+from incident_agent.config.logging_config import get_logger
 from incident_agent.config.settings import get_settings
 from incident_agent.graphs.state import IncidentState
+
+logger = get_logger(__name__)
 
 
 def route_after_reflection(state: IncidentState) -> Literal["planner", "human_approval"]:
@@ -21,6 +24,11 @@ def route_after_reflection(state: IncidentState) -> Literal["planner", "human_ap
     should_replan = state.get("metadata", {}).get("last_reflection_should_replan", True)
     retry_count = state.get("retry_count", 0)
 
-    if should_replan and retry_count < settings.max_replan_attempts:
-        return "planner"
-    return "human_approval"
+    decision: Literal["planner", "human_approval"] = (
+        "planner" if should_replan and retry_count < settings.max_replan_attempts else "human_approval"
+    )
+    logger.info(
+        "reflection_routing",
+        extra={"should_replan": should_replan, "retry_count": retry_count, "decision": decision},
+    )
+    return decision
