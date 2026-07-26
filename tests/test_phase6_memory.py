@@ -30,7 +30,7 @@ from incident_agent.models.memory import PastIncidentRecord
 from incident_agent.nodes.recall_memory_node import recall_memory_node
 from incident_agent.nodes.save_memory_node import save_memory_node
 from incident_agent.schemas.report import IncidentReport
-from incident_agent.services.vector_store import VectorStoreService
+from incident_agent.services.vector_store import UnsupportedEmbeddingModelError, VectorStoreService
 
 
 @pytest.fixture
@@ -42,6 +42,20 @@ def sqlite_conn():
 def episodic_repo(tmp_path) -> ChromaEpisodicMemoryRepository:
     store = VectorStoreService(persist_directory=str(tmp_path / "chroma"), collection_name="test_episodic")
     return ChromaEpisodicMemoryRepository(store)
+
+
+@pytest.mark.unit
+class TestVectorStoreServiceEmbeddingModelValidation:
+    def test_default_embedding_model_constructs_successfully(self, tmp_path) -> None:
+        VectorStoreService(persist_directory=str(tmp_path / "chroma"), collection_name="test_default_model")
+
+    def test_unsupported_embedding_model_raises_before_touching_chroma(self, tmp_path) -> None:
+        with pytest.raises(UnsupportedEmbeddingModelError, match="text-embedding-3-small"):
+            VectorStoreService(
+                persist_directory=str(tmp_path / "chroma"),
+                collection_name="test_unsupported_model",
+                embedding_model="text-embedding-3-small",
+            )
 
 
 @pytest.mark.unit

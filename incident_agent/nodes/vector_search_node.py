@@ -34,7 +34,7 @@ def vector_search_node(state: IncidentState) -> dict[str, Any]:
             task_description=task.description if task else "Find relevant runbooks/postmortems.",
         )
 
-        doc_type = query_plan.metadata_filters.get("doc_type")
+        doc_type = query_plan.doc_type
         documents_by_id: dict[str, RetrievedDocument] = {}
         for query in query_plan.queries[:_MAX_QUERIES]:
             payload = invoke_tool(knowledge_base_search, query=query, top_k=_TOP_K_PER_QUERY, doc_type=doc_type)

@@ -14,6 +14,16 @@ the RAG pipeline fully functional with zero API key configured --
 important for a project meant to run and be tested without live
 credentials -- while remaining a real, semantically meaningful vector
 search rather than a keyword-match stub.
+
+`settings.chroma.embedding_model` (`CHROMA__EMBEDDING_MODEL`) is checked
+against `_SUPPORTED_EMBEDDING_MODELS` rather than actually selecting a
+backend by name: `all-MiniLM-L6-v2` is the only model this project has
+dependencies for. Swapping to another model -- Chroma's
+`SentenceTransformerEmbeddingFunction` (needs `sentence-transformers` +
+`torch`, both deliberately excluded from requirements.txt -- no C
+compiler in this project's target environment) or a hosted API model
+(needs API credentials) -- is a real dependency/config decision, not
+something a stray env var value should silently no-op past.
 """
 
 from __future__ import annotations
@@ -31,11 +41,29 @@ from incident_agent.services.kb_seed_data import SEED_DOCUMENTS
 
 logger = get_logger(__name__)
 
+_SUPPORTED_EMBEDDING_MODELS = frozenset({"all-MiniLM-L6-v2"})
+
+
+class UnsupportedEmbeddingModelError(ValueError):
+    """Raised when `CHROMA__EMBEDDING_MODEL` names a model this deployment
+    has no embedding backend wired up for."""
+
 
 class VectorStoreService:
     """Thin, typed wrapper around one Chroma collection."""
 
-    def __init__(self, persist_directory: str, collection_name: str) -> None:
+    def __init__(
+        self, persist_directory: str, collection_name: str, embedding_model: str = "all-MiniLM-L6-v2"
+    ) -> None:
+        if embedding_model not in _SUPPORTED_EMBEDDING_MODELS:
+            raise UnsupportedEmbeddingModelError(
+                f"CHROMA__EMBEDDING_MODEL={embedding_model!r} is not available -- only "
+                f"{sorted(_SUPPORTED_EMBEDDING_MODELS)} is wired up (Chroma's bundled ONNX embedding "
+                "function). Using a different model requires adding and wiring a different "
+                "chromadb.utils.embedding_functions backend, e.g. SentenceTransformerEmbeddingFunction "
+                "(needs the sentence-transformers + torch packages) or a hosted API embedding function "
+                "(needs API credentials)."
+            )
         self._client = chromadb.PersistentClient(path=persist_directory)
         self._embedding_fn = embedding_functions.DefaultEmbeddingFunction()
         self._collection = self._client.get_or_create_collection(
@@ -148,6 +176,7 @@ def get_vector_store_service() -> VectorStoreService:
     service = VectorStoreService(
         persist_directory=settings.chroma.persist_directory,
         collection_name=settings.chroma.collection_name,
+        embedding_model=settings.chroma.embedding_model,
     )
     service.seed_if_empty()
     return service

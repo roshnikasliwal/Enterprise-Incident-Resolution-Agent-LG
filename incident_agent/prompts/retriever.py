@@ -13,10 +13,10 @@ RETRIEVER_PROMPT = build_agent_prompt(
     agent_name="Retriever Agent",
     responsibility=(
         "Formulate the search queries that will be run against the internal knowledge base "
-        "(runbooks, past incident postmortems, architecture docs). Produce several "
-        "differently-phrased queries (multi-query retrieval) to maximize recall, and "
-        "identify any metadata filters (e.g. component name, document type) that should "
-        "narrow the search."
+        "(runbooks and past incident postmortems only -- no other document types exist). Produce "
+        "several differently-phrased queries (multi-query retrieval) to maximize recall, and set "
+        "doc_type to 'runbook' or 'postmortem' only when the query clearly calls for exactly one of "
+        "them; leave it null otherwise. doc_type is a single value, never a list."
     ),
     human_template=(
         "User-reported issue:\n{user_query}\n\n"
